@@ -1,0 +1,50 @@
+[
+    {"name": "V60 Flores Bajawa", "price": 35000, "category": "manual_brew"},
+    {"name": "V60 Gayo Aceh", "price": 32000, "category": "manual_brew"},
+    {"name": "V60 Toraja Sapan", "price": 36000, "category": "manual_brew"},
+    {"name": "French Press Bali Kintamani", "price": 30000, "category": "manual_brew"},
+    {"name": "Kalita Wave Papua Wamena", "price": 38000, "category": "manual_brew"},
+
+    {"name": "Espresso", "price": 20000, "category": "espresso"},
+    {"name": "Americano", "price": 22000, "category": "espresso"},
+    {"name": "Cappuccino", "price": 28000, "category": "espresso"},
+    {"name": "Caffe Latte", "price": 28000, "category": "espresso"},
+    {"name": "Flat White", "price": 29000, "category": "espresso"},
+    {"name": "Magic (Double Ristretto)", "price": 30000, "category": "espresso"},
+    {"name": "Mocha", "price": 32000, "category": "espresso"},
+
+    {"name": "Es Kopi Susu Gula Aren", "price": 25000, "category": "iced_coffee"},
+    {"name": "Iced Americano", "price": 24000, "category": "iced_coffee"},
+    {"name": "Iced Latte", "price": 30000, "category": "iced_coffee"},
+    {"name": "Japanese Iced Coffee", "price": 33000, "category": "iced_coffee"},
+    {"name": "Cold Brew", "price": 32000, "category": "iced_coffee"},
+
+    {"name": "Matcha Latte", "price": 30000, "category": "non_coffee"},
+    {"name": "Chocolate Latte", "price": 28000, "category": "non_coffee"},
+    {"name": "Red Velvet Latte", "price": 30000, "category": "non_coffee"},
+    {"name": "Thai Tea", "price": 27000, "category": "non_coffee"},
+    {"name": "Taro Latte", "price": 29000, "category": "non_coffee"},
+
+    {"name": "Lemon Tea", "price": 20000, "category": "tea"},
+    {"name": "Lychee Tea", "price": 25000, "category": "tea"},
+    {"name": "Peach Tea", "price": 25000, "category": "tea"},
+    {"name": "Mineral Water", "price": 10000, "category": "others"},
+    {"name": "Sparkling Water", "price": 18000, "category": "others"},
+
+    {"name": "French Fries", "price": 25000, "category": "snack"},
+    {"name": "Onion Rings", "price": 26000, "category": "snack"},
+    {"name": "Chicken Wings", "price": 35000, "category": "snack"},
+    {"name": "Mix Platter", "price": 45000, "category": "snack"},
+
+    {"name": "Nasi Goreng Spesial", "price": 35000, "category": "food"},
+    {"name": "Mie Goreng Jawa", "price": 32000, "category": "food"},
+    {"name": "Chicken Katsu Rice", "price": 38000, "category": "food"},
+    {"name": "Beef Teriyaki Rice", "price": 42000, "category": "food"},
+    {"name": "Spaghetti Bolognese", "price": 40000, "category": "food"},
+
+    {"name": "Croissant Butter", "price": 22000, "category": "dessert"},
+    {"name": "Chocolate Croissant", "price": 25000, "category": "dessert"},
+    {"name": "Cheesecake", "price": 30000, "category": "dessert"},
+    {"name": "Brownies", "price": 25000, "category": "dessert"},
+    {"name": "Tiramisu", "price": 32000, "category": "dessert"}
+]
