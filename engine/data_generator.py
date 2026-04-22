@@ -4,6 +4,8 @@ import random
 import json
 from faker import Faker
 import os
+import string
+import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -34,15 +36,20 @@ def get_connection():
             print("🕒 Menunggu database siap...")
             time.sleep(2)
 
+def generate_order_id():
+    date_str = datetime.datetime.now().strftime("%Y%m%d")
+    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+    return f"CB-{date_str}-{random_str}"
+
 def simulate_transactions():
     conn = get_connection()
     conn.autocommit = True
     cur = conn.cursor()
     
-    print("🚀 Generator aktif... Mengirim transaksi ke Postgres.")
-
-    active_order_ids = []
-
+    cur.execute("SELECT id FROM orders WHERE status IN ('pending', 'on process')")
+    active_order_ids = [row[0] for row in cur.fetchall()]
+    print(f"🚀 Generator kembali aktif. Melanjutkan {len(active_order_ids)} pesanan yang tertunda.")
+    
     try:
         while True:
             # Tentukan aksi secara acak: 70% Insert, 25% Update, 5% Delete
@@ -52,36 +59,51 @@ def simulate_transactions():
             if action_roll < 0.7 or not active_order_ids:
                 item = random.choice(MENU)
                 name = fake.name()
+                custom_id = generate_order_id()
+                
                 cur.execute(
                     """
-                    INSERT INTO orders (customer_name, menu_item, price, category, status)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO orders (order_id, customer_name, menu_item, price, category, status)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (order_id) DO NOTHING
                     RETURNING id
                     """,
-                    (name, item['name'], item['price'], item['category'], 'pending')
+                    (custom_id, name, item['name'], item['price'], item['category'], 'pending')
                 )
-                new_id = cur.fetchone()[0]
-                active_order_ids.append(new_id)
-                print(f"[INSERT] Order #{new_id}: {name} memesan {item['name']}")
+                result = cur.fetchone()
+                
+                if result:
+                    new_db_id = result[0]
+                    active_order_ids.append(new_db_id)
+                    print(f"[INSERT] Order #{custom_id}: {name} memesan {item['name']}")
+                else:
+                    print(f"⚠️ Skip: Order ID {custom_id} sudah ada, mencoba lagi di loop berikutnya.")
 
             # 2. UPDATE: Perubahan Status (dari pending -> on process -> completed)
             elif action_roll < 0.95:
-                order_id = random.choice(active_order_ids)
+                db_id = random.choice(active_order_ids)
                 new_status = random.choice(['on process', 'completed'])
                 
-                cur.execute("UPDATE orders SET status = %s WHERE id = %s", (new_status, order_id))
-                print(f"[UPDATE] Order #{order_id} status berubah menjadi: {new_status}")
+                cur.execute(
+                    "UPDATE orders SET status = %s WHERE id = %s RETURNING order_id", 
+                    (new_status, db_id)
+                )
+                actual_custom_id = cur.fetchone()[0]
+                print(f"[UPDATE] Order #{actual_custom_id} status berubah menjadi: {new_status}")
                 
                 if new_status == 'completed':
-                    active_order_ids.remove(order_id)
+                    active_order_ids.remove(db_id)
 
             # 3. UPDATE: Pembatalan Pesanan
             else:
-                order_id = random.choice(active_order_ids)
-                new_status = 'cancelled'
-                cur.execute("UPDATE orders SET status = %s WHERE id = %s", (new_status, order_id))
-                active_order_ids.remove(order_id)
-                print(f"[UPDATE] Order #{order_id} dibatalkan oleh pelanggan")
+                db_id = random.choice(active_order_ids)
+                cur.execute(
+                    "UPDATE orders SET status = 'cancelled' WHERE id = %s RETURNING order_id", 
+                    (db_id,)
+                )
+                actual_custom_id = cur.fetchone()[0]
+                active_order_ids.remove(db_id)
+                print(f"[UPDATE] Order #{actual_custom_id} dibatalkan oleh pelanggan")
 
             # Beri jeda acak 1-5 detik agar terlihat natural
             time.sleep(random.uniform(1, 5))
