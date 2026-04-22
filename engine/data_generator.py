@@ -21,7 +21,9 @@ DB_CONFIG = {
 }
 
 # Menu Coffee Shop Bandung
-with open("listener/menu_coffeeshop.json", "r") as f:
+current_dir = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(current_dir, "menu_coffeeshop.json")
+with open(file_path, "r") as f:
     MENU = json.load(f)
 
 def get_connection():
@@ -45,7 +47,6 @@ def simulate_transactions():
         while True:
             # Tentukan aksi secara acak: 70% Insert, 25% Update, 5% Delete
             action_roll = random.random()
-            print(action_roll)
 
             # 1. INSERT: Pesanan Baru
             if action_roll < 0.7 or not active_order_ids:
