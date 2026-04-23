@@ -1,4 +1,3 @@
-import psycopg2
 import time
 import random
 import json
@@ -6,20 +5,18 @@ from faker import Faker
 import os
 import string
 import datetime
+import redis
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Inisialisasi Faker untuk nama pelanggan
 fake = Faker()
 
-# Konfigurasi Database
-DB_CONFIG = {
-    "host": os.getenv("DB_HOST"),
-    "database": os.getenv("DB_NAME"),
-    "user": os.getenv("DB_USER"),
-    "password": os.getenv("DB_PASSWORD"),
-    "port": os.getenv("DB_PORT")
+# Konfigurasi Redis
+REDIS_CONFIG = {
+    "host": os.getenv("REDIS_HOST"),
+    "port": int(os.getenv("REDIS_PORT")),
+    "decode_responses": True
 }
 
 # Menu Coffee Shop Bandung
@@ -28,12 +25,14 @@ file_path = os.path.join(current_dir, "menu_coffeeshop.json")
 with open(file_path, "r") as f:
     MENU = json.load(f)
 
-def get_connection():
+def get_redis_connection():
     while True:
         try:
-            return psycopg2.connect(**DB_CONFIG)
-        except psycopg2.OperationalError:
-            print("🕒 Menunggu database siap...")
+            r = redis.Redis(**REDIS_CONFIG)
+            if r.ping():
+                return r
+        except redis.ConnectionError:
+            print("🕒 Menunggu Redis siap...")
             time.sleep(2)
 
 def generate_order_id():
@@ -42,77 +41,40 @@ def generate_order_id():
     return f"CB-{date_str}-{random_str}"
 
 def simulate_transactions():
-    conn = get_connection()
-    conn.autocommit = True
-    cur = conn.cursor()
-    
-    cur.execute("SELECT id FROM orders WHERE status IN ('pending', 'on process')")
-    active_order_ids = [row[0] for row in cur.fetchall()]
-    print(f"🚀 Generator kembali aktif. Melanjutkan {len(active_order_ids)} pesanan yang tertunda.")
+    r = get_redis_connection()
+    print(f"🚀 Generator aktif. Mengirim data ke Redis Host: {REDIS_CONFIG['host']}")
     
     try:
         while True:
-            # Tentukan aksi secara acak: 70% Insert, 25% Update, 5% Delete
-            action_roll = random.random()
+            item = random.choice(MENU)
+            name = fake.name()
+            order_id = generate_order_id()
+            
+            order_data = {
+                "order_id": order_id,
+                "customer_name": name,
+                "menu_item": item['name'],
+                "price": item['price'],
+                "category": item['category'],
+                "status": "pending",
+                "timestamp": datetime.datetime.now().isoformat()
+            }
+            
+            payload = json.dumps(order_data)
 
-            # 1. INSERT: Pesanan Baru
-            if action_roll < 0.7 or not active_order_ids:
-                item = random.choice(MENU)
-                name = fake.name()
-                custom_id = generate_order_id()
-                
-                cur.execute(
-                    """
-                    INSERT INTO orders (order_id, customer_name, menu_item, price, category, status)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (order_id) DO NOTHING
-                    RETURNING id
-                    """,
-                    (custom_id, name, item['name'], item['price'], item['category'], 'pending')
-                )
-                result = cur.fetchone()
-                
-                if result:
-                    new_db_id = result[0]
-                    active_order_ids.append(new_db_id)
-                    print(f"[INSERT] Order #{custom_id}: {name} memesan {item['name']}")
-                else:
-                    print(f"⚠️ Skip: Order ID {custom_id} sudah ada, mencoba lagi di loop berikutnya.")
+            # 1. Masukkan ke Antrean (Buffer untuk Bulk Insert nantinya)
+            r.lpush("order_queue", payload)
 
-            # 2. UPDATE: Perubahan Status (dari pending -> on process -> completed)
-            elif action_roll < 0.95:
-                db_id = random.choice(active_order_ids)
-                new_status = random.choice(['on process', 'completed'])
-                
-                cur.execute(
-                    "UPDATE orders SET status = %s WHERE id = %s RETURNING order_id", 
-                    (new_status, db_id)
-                )
-                actual_custom_id = cur.fetchone()[0]
-                print(f"[UPDATE] Order #{actual_custom_id} status berubah menjadi: {new_status}")
-                
-                if new_status == 'completed':
-                    active_order_ids.remove(db_id)
+            # 2. Publish ke Channel (Untuk Real-time Dashboard)
+            r.publish("coffee_orders_channel", payload)
 
-            # 3. UPDATE: Pembatalan Pesanan
-            else:
-                db_id = random.choice(active_order_ids)
-                cur.execute(
-                    "UPDATE orders SET status = 'cancelled' WHERE id = %s RETURNING order_id", 
-                    (db_id,)
-                )
-                actual_custom_id = cur.fetchone()[0]
-                active_order_ids.remove(db_id)
-                print(f"[UPDATE] Order #{actual_custom_id} dibatalkan oleh pelanggan")
+            print(f"[SENT TO REDIS] {order_id} | {name} memesan {item['name']}")
 
-            # Beri jeda acak 1-5 detik agar terlihat natural
-            time.sleep(random.uniform(1, 5))
+            # Jeda acak 1-3 detik (lebih cepat sedikit untuk ngetes antrean)
+            time.sleep(random.uniform(1, 3))
 
     except KeyboardInterrupt:
         print("\nStopping generator...")
-    finally:
-        cur.close()
-        conn.close()
 
 if __name__ == "__main__":
     simulate_transactions()
