@@ -19,5 +19,16 @@ services:
       -c max_replication_slots=5
       -c max_wal_senders=5
 
+  redis:
+    image: redis:7-alpine
+    container_name: cdc_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
 volumes:
   postgres_data:
+  redis_data:
