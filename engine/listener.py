@@ -1,21 +1,22 @@
+import os
 import time
 import json
-import os
+import redis
 import psycopg2
 from psycopg2.extras import execute_values
-import redis
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 load_dotenv()
 
-# Konfigurasi Redis
+from utils.logger import setup_logger
+logger = setup_logger()
+
 r = redis.Redis(
     host=os.getenv("REDIS_HOST"),
     port=int(os.getenv("REDIS_PORT")),
     decode_responses=True
 )
 
-# Konfigurasi Database
 DB_CONFIG = {
     "host": os.getenv("DB_HOST"),
     "database": os.getenv("DB_NAME"),
@@ -30,7 +31,7 @@ def get_db_connection():
             conn = psycopg2.connect(**DB_CONFIG)
             return conn
         except psycopg2.OperationalError:
-            print("🕒 Menunggu database Postgres siap...")
+            logger.info("🕒 Menunggu database Postgres siap...")
             time.sleep(2)
 
 def start_bulk_listener():
@@ -44,7 +45,7 @@ def start_bulk_listener():
     buffer = []
     last_flush_time = time.time()
 
-    print(f"🚀 Bulk Listener aktif. Menunggu antrean di Redis...")
+    logger.info(f"🚀 Bulk Listener aktif. Menunggu antrean di Redis...")
 
     try:
         while True:
@@ -54,10 +55,16 @@ def start_bulk_listener():
             if raw_data:
                 buffer.append(json.loads(raw_data))
 
+            latest_records = {}
+            for record in buffer:
+                latest_records[record['order_id']] = record
+
+            deduped_buffer = list(latest_records.values())
+
             # 2. Cek kondisi untuk Bulk Insert: 
             # Jika buffer penuh ATAU sudah terlalu lama sejak flush terakhir
             current_time = time.time()
-            if len(buffer) >= BATCH_LIMIT or (current_time - last_flush_time >= TIME_THRESHOLD and buffer):
+            if len(deduped_buffer) >= BATCH_LIMIT or (current_time - last_flush_time >= TIME_THRESHOLD and deduped_buffer):
                 
                 try:
                     # Persiapkan data untuk execute_values
@@ -69,31 +76,40 @@ def start_bulk_listener():
                             b['price'], 
                             b['category'], 
                             b['status']
-                        ) for b in buffer
+                        ) for b in deduped_buffer
                     ]
 
                     execute_values(cur, """
-                        INSERT INTO orders (order_id, customer_name, menu_item, price, category, status)
+                        INSERT INTO orders (
+                            order_id, customer_name, menu_item, price, category, status
+                        )
                         VALUES %s
-                        ON CONFLICT (order_id) DO NOTHING
+                        ON CONFLICT (order_id)
+                        DO UPDATE SET
+                            customer_name = EXCLUDED.customer_name,
+                            menu_item = EXCLUDED.menu_item,
+                            price = EXCLUDED.price,
+                            category = EXCLUDED.category,
+                            status = EXCLUDED.status,
+                            updated_at = CURRENT_TIMESTAMP
                     """, values)
 
                     conn.commit()
-                    print(f"📦 [BULK INSERT] Berhasil memasukkan {len(buffer)} data ke Postgres.")
+                    logger.info(f"📦 [BULK INSERT] Berhasil memasukkan {len(buffer)} data ke Postgres.")
                     
                     # Reset buffer dan timer
                     buffer = []
                     last_flush_time = current_time
 
                 except Exception as e:
-                    print(f"❌ Gagal melakukan bulk insert: {e}")
+                    logger.info(f"❌ Gagal melakukan bulk insert: {e}")
                     conn.rollback()
             
             if not raw_data:
                 time.sleep(0.5)
 
     except KeyboardInterrupt:
-        print("\nStopping Bulk Listener...")
+        logger.info("\nStopping Bulk Listener...")
     finally:
         cur.close()
         conn.close()
