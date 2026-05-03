@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import json
 import redis
@@ -7,6 +8,9 @@ import string
 import datetime
 from faker import Faker
 from concurrent.futures import ThreadPoolExecutor
+
+sys.path.insert(0, os.path.dirname(__file__))               # tambah folder dashboard (untuk transform)
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))  # tambah root project (untuk utils)
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -44,7 +48,7 @@ def send_event(r, order_data):
     r.lpush("order_queue", payload)                 # Batch Insert to DB
     r.publish("coffee_orders_channel", payload)     # Real-time update for API
 
-    logger.info(f"[EVENT] {order_data['order_id']} | {order_data['status']} \n        {order_data['customer_name']} ordered {order_data['menu_item']}\n")
+    # logger.info(f"[EVENT] {order_data['order_id']} | {order_data['status']} \n        {order_data['customer_name']} ordered {order_data['menu_item']}\n")
 
 def generate_order_id():
     date_str = datetime.datetime.now().strftime("%Y%m%d")
