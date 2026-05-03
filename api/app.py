@@ -1,9 +1,13 @@
 import os
+import sys
 import json
 import redis
 import threading
 from flask_socketio import SocketIO
 from flask import Flask, Response, stream_with_context, Blueprint, jsonify
+
+sys.path.insert(0, os.path.dirname(__file__))               # tambah folder dashboard (untuk transform)
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))  # tambah root project (untuk utils)
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -46,7 +50,7 @@ def stream():
                     # Data dari Redis sudah berupa string JSON, kirim langsung
                     yield f"data: {message['data']}\n"
         except Exception as e:
-                    logger.error(f"Stream Error: {e}")
+            logger.error(f"Stream Error: {e}")
         finally:
             pubsub.close()
             logger.info("PubSub connection closed safely.")
@@ -71,12 +75,13 @@ def health():
         "service": "coffee-cdc-monitor"
     }), 200
 
+app.register_blueprint(api_v1)
+
 if __name__ == '__main__':
     # Jalankan listener Redis di thread terpisah agar tidak memblokir Flask
     thread = threading.Thread(target=redis_listener)
     thread.daemon = True
     thread.start()
-    app.register_blueprint(api_v1)
     
     # Jalankan Flask-SocketIO dengan threading mode
     # allow_unsafe_werkzeug=True diperlukan untuk dev server di mode threading
