@@ -1,0 +1,20 @@
+# Core
+python-dotenv>=1.0.0
+
+# Data generation
+faker>=24.0.0
+
+# Redis
+redis>=5.0.0
+
+# PostgreSQL
+psycopg2-binary>=2.9.9
+
+# API
+flask>=3.0.0
+flask-socketio>=5.3.6
+
+# Dashboard
+gradio>=4.0.0
+requests>=2.31.0
+pandas>=2.0.0
