@@ -1,9 +1,13 @@
 import os
+import sys
 import time
 import json
 import redis
 import psycopg2
 from psycopg2.extras import execute_values
+
+sys.path.insert(0, os.path.dirname(__file__))               # tambah folder dashboard (untuk transform)
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))  # tambah root project (untuk utils)
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -11,11 +15,20 @@ load_dotenv()
 from utils.logger import setup_logger
 logger = setup_logger()
 
-r = redis.Redis(
-    host=os.getenv("REDIS_HOST"),
-    port=int(os.getenv("REDIS_PORT")),
-    decode_responses=True
-)
+def get_redis_connection():
+    while True:
+        try:
+            r = redis.Redis(
+                host=os.getenv("REDIS_HOST"),
+                port=int(os.getenv("REDIS_PORT")),
+                decode_responses=True
+            )
+            if r.ping():
+                logger.info("✅ Redis terhubung.")
+                return r
+        except redis.ConnectionError:
+            logger.info("🕒 Menunggu Redis siap...")
+            time.sleep(2)
 
 DB_CONFIG = {
     "host": os.getenv("DB_HOST"),
@@ -35,6 +48,7 @@ def get_db_connection():
             time.sleep(2)
 
 def start_bulk_listener():
+    r = get_redis_connection()   # FIX 1: gunakan fungsi retry
     conn = get_db_connection()
     cur = conn.cursor()
     
@@ -95,14 +109,14 @@ def start_bulk_listener():
                     """, values)
 
                     conn.commit()
-                    logger.info(f"📦 [BULK INSERT] Berhasil memasukkan {len(buffer)} data ke Postgres.")
+                    # logger.info(f"📦 [BULK INSERT] Berhasil memasukkan {len(deduped_buffer)} data ke Postgres.")
                     
                     # Reset buffer dan timer
                     buffer = []
                     last_flush_time = current_time
 
                 except Exception as e:
-                    logger.info(f"❌ Gagal melakukan bulk insert: {e}")
+                    logger.error(f"❌ Gagal melakukan bulk insert: {e}")
                     conn.rollback()
             
             if not raw_data:
