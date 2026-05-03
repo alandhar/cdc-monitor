@@ -3,6 +3,8 @@
 
 ![Demo GIF](docs/demo.gif)
 
+![Demo GIF](docs/demo2.gif)
+
 ---
 
 ## 📑 Daftar Isi
@@ -252,7 +254,7 @@ Sebelum memulai, pastikan sudah terinstal:
 ## 🚀 Instalasi & Menjalankan
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/username/streaming-api.git
+git clone https://github.com/alandhar/streaming-api.git
 cd streaming-api
 ```
 ### 2. Buat File Environment
@@ -350,7 +352,7 @@ Cek status layanan.
 {
   "status": "healthy",
   "version": "1.0.0",
-  "service": "streaming-api"
+  "service": "coffee-streaming-api"
 }
 ```
 ### `GET /api/v1/stream`
