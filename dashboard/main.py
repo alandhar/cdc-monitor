@@ -1,4 +1,9 @@
+import sys
+import os
 import gradio as gr
+
+sys.path.insert(0, os.path.dirname(__file__))               # tambah folder dashboard (untuk transform)
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))  # tambah root project (untuk utils)
 
 from transform import DataTransformer
 transformer = DataTransformer()
@@ -6,7 +11,7 @@ transformer = DataTransformer()
 from utils.logger import setup_logger
 logger = setup_logger()
 
-# ---- KPI CARD UI (Tetap sama) ----
+# ---- KPI CARD UI ----
 def create_kpi_card(label, value, icon=""):
     return f"""
     <div style="background-color: #FF7043; padding: 20px; border-radius: 20px; 
