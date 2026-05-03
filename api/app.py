@@ -72,7 +72,7 @@ def health():
     return jsonify({
         "status": "healthy",
         "version": "1.0.0",
-        "service": "coffee-cdc-monitor"
+        "service": "coffee-streaming-api"
     }), 200
 
 app.register_blueprint(api_v1)

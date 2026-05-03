@@ -82,7 +82,7 @@ def check_crashed() -> list[str]:
 # ─── Main ─────────────────────────────────────────────────────────────────────
 def main():
     parser = argparse.ArgumentParser(
-        description="CDC Monitor — Orchestrator",
+        description="Streaming API — Orchestrator",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Contoh:
